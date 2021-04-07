@@ -2,6 +2,7 @@
 Algorithms and data structures implemented in the programming language C ++
 
 **Data structures**
+- Vector --> [Open](Data%20Structures/Vector/vector.h)
 - Stack --> [Open](Data%20Structures/Stack/Stack.h)
 - Queue --> [Open](Data%20Structures/Queue/Queue.h)
 - Deque --> [Open](Data%20Structures/Deque/Deque.h)
