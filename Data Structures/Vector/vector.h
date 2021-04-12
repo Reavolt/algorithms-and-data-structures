@@ -201,6 +201,8 @@ bool operator!=(const Iterator<type_operator>& lhs, const Iterator<type_operator
 template <typename Type, typename allocator = Allocator<Type>>
 class Vector
 {
+    static_assert(std::is_same_v<typename std::remove_cv_t<Type>, Type>,
+                  "Vector must have a non-const, non-volatile value_type");
 public:
     using value_type             = Type;
     using allocator_type         = allocator;
@@ -222,8 +224,8 @@ public:
     constexpr explicit Vector(size_type count, const allocator_type& alloc = allocator_type());
     constexpr Vector(size_type count, const_reference value, const allocator_type& alloc = allocator_type());
     template<typename InputIt,
-             typename std::enable_if_t<std::is_convertible_v<
-             typename std::iterator_traits<InputIt>::iterator_category, std::input_iterator_tag>>>
+             typename = std::enable_if_t<std::is_base_of_v<std::input_iterator_tag,
+             typename std::iterator_traits<InputIt>::iterator_category>>>
     constexpr Vector(InputIt first, InputIt last, const allocator_type& alloc = allocator_type());
     constexpr Vector(const Vector& value);
     constexpr Vector(Vector&& value) noexcept;
@@ -353,9 +355,7 @@ constexpr Vector<Type, allocator>::Vector(size_type count, const_reference value
 }
 //----------------------------------------------------------------------------------------------------
 template <typename Type, typename allocator>
-template <typename InputIt,
-          typename std::enable_if_t<std::is_convertible_v<typename std::iterator_traits<InputIt>::iterator_category,
-                   std::input_iterator_tag>>>
+template <typename InputIt, typename>
 constexpr Vector<Type, allocator>::Vector(InputIt first, InputIt last, const allocator_type& alloc) :
         array_allocator(alloc),
         array_ptr(std::allocator_traits<allocator_type>::allocate(array_allocator, std::distance(first, last))),
@@ -377,7 +377,7 @@ constexpr Vector<Type, allocator>::Vector(const Vector& value) :
 {
     for (size_type i = 0; i < array_size; ++i)
     {
-        std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, value_type());
+        std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, value.array_ptr[i]);
     }
 }
 //----------------------------------------------------------------------------------------------------
@@ -391,7 +391,7 @@ constexpr Vector<Type, allocator>::Vector(Vector&& value) noexcept :
     value.array_ptr = nullptr;
     value.array_size = 0;
     value.array_capacity = 0;
-    value.array_allocator = nullptr;
+    value.array_allocator = allocator();
 }
 //----------------------------------------------------------------------------------------------------
 template <typename Type, typename allocator>
@@ -403,7 +403,7 @@ constexpr Vector<Type, allocator>::Vector(const Vector& value, const allocator_t
 {
     for (size_type i = 0; i < array_size; ++i)
     {
-        std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, value_type());
+        std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, value.array_ptr[i]);
     }
 }
 //----------------------------------------------------------------------------------------------------
@@ -417,7 +417,7 @@ constexpr Vector<Type, allocator>::Vector(Vector&& value, const allocator_type& 
     value.array_ptr = nullptr;
     value.array_size = 0;
     value.array_capacity = 0;
-    value.array_allocator = nullptr;
+    value.array_allocator = allocator();
 }
 //----------------------------------------------------------------------------------------------------
 template<typename Type, typename allocator>
@@ -453,9 +453,9 @@ constexpr Vector<Type, allocator>& Vector<Type, allocator>::operator=(const Vect
         {
             std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, value[i]);
         }
-
         array_size = value.array_size;
         array_capacity = value.array_capacity;
+        array_allocator = value.array_allocator;
     }
     return *this;
 }
@@ -468,6 +468,7 @@ constexpr Vector<Type, allocator>& Vector<Type, allocator>::operator=(Vector&& v
         std::swap(array_ptr, value.array_ptr);
         std::swap(array_size, value.array_size);
         std::swap(array_capacity, value.array_capacity);
+        std::swap(array_allocator, value.array_allocator);
     }
     return *this;
 }
