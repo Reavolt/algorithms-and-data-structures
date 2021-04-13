@@ -28,8 +28,8 @@ public:
     constexpr explicit Allocator(const Allocator<Allocator_Type>& other) noexcept;
     constexpr ~Allocator() = default;
 
-    constexpr value_type* allocate(std::size_t count);
-    constexpr void deallocate(value_type* value_type_ptr, std::size_t count);
+    constexpr value_type* allocate(size_type count);
+    constexpr void deallocate(value_type* value_type_ptr, size_type count);
 
     //Non-member functions
     template<typename lhs_type, typename rhs_type>
@@ -46,13 +46,13 @@ constexpr Allocator<Type>::Allocator(const Allocator<Allocator_Type>& other) noe
 }
 //----------------------------------------------------------------------------------------------------
 template <typename Type>
-constexpr typename Allocator<Type>::value_type* Allocator<Type>::allocate(std::size_t count)
+constexpr typename Allocator<Type>::value_type* Allocator<Type>::allocate(size_type count)
 {
     return reinterpret_cast<value_type*>(::operator new(count * sizeof(value_type)));
 }
 //----------------------------------------------------------------------------------------------------
 template <typename Type>
-constexpr void Allocator<Type>::deallocate(value_type* value_type_ptr, std::size_t count)
+constexpr void Allocator<Type>::deallocate(value_type* value_type_ptr, size_type count)
 {
     ::operator delete(value_type_ptr);
 }
@@ -228,7 +228,8 @@ public:
              typename std::iterator_traits<InputIt>::iterator_category>>>
     constexpr Vector(InputIt first, InputIt last, const allocator_type& alloc = allocator_type());
     constexpr Vector(const Vector& value);
-    constexpr Vector(Vector&& value) noexcept;
+    constexpr Vector(Vector&& value) noexcept(std::allocator_traits<allocator_type>::propagate_on_container_move_assignment::value ||
+                                              std::allocator_traits<allocator_type>::is_always_equal::value);
     constexpr Vector(const Vector& value, const allocator_type& alloc);
     constexpr Vector(Vector&& value, const allocator_type& alloc);
     constexpr Vector(std::initializer_list<value_type> init_list, const allocator_type& alloc = allocator_type());
@@ -238,7 +239,9 @@ public:
     constexpr Vector& operator=(Vector&& value) noexcept;
     constexpr Vector& operator=(std::initializer_list<value_type> init_list);
 
-    template<typename InputIt>
+    template<typename InputIt,
+             typename = std::enable_if_t<std::is_base_of_v<std::input_iterator_tag,
+             typename std::iterator_traits<InputIt>::iterator_category>>>
     constexpr void           assign(InputIt first, InputIt last);
     constexpr void           assign(size_type count, const_reference value);
     constexpr void           assign(std::initializer_list<value_type> init_list);
@@ -271,7 +274,7 @@ public:
 
     //Element access
     constexpr reference       operator[](size_type position);
-    constexpr const_reference operator[]( size_type position) const;
+    constexpr const_reference operator[](size_type position) const;
     constexpr const_reference at(size_type position) const;
     constexpr reference       at(size_type position);
     constexpr reference       front();
@@ -337,7 +340,7 @@ constexpr Vector<Type, allocator>::Vector(size_type count, const allocator_type&
 {
     for (size_type i = 0; i < array_size; ++i)
     {
-        std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, value_type());
+        std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), value_type());
     }
 }
 //----------------------------------------------------------------------------------------------------
@@ -350,7 +353,7 @@ constexpr Vector<Type, allocator>::Vector(size_type count, const_reference value
 {
     for (size_type i = 0; i < array_size; ++i)
     {
-        std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, value);
+        std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), value);
     }
 }
 //----------------------------------------------------------------------------------------------------
@@ -364,7 +367,7 @@ constexpr Vector<Type, allocator>::Vector(InputIt first, InputIt last, const all
 {
     for (size_type i = 0; i < array_size; ++i)
     {
-        std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, *(first + i));
+        std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), *std::next(first, i));
     }
 }
 //----------------------------------------------------------------------------------------------------
@@ -377,12 +380,14 @@ constexpr Vector<Type, allocator>::Vector(const Vector& value) :
 {
     for (size_type i = 0; i < array_size; ++i)
     {
-        std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, value.array_ptr[i]);
+        std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), value.array_ptr[i]);
     }
 }
 //----------------------------------------------------------------------------------------------------
 template <typename Type, typename allocator>
-constexpr Vector<Type, allocator>::Vector(Vector&& value) noexcept :
+constexpr Vector<Type, allocator>::Vector(Vector&& value) noexcept(
+        std::allocator_traits<allocator_type>::propagate_on_container_move_assignment::value ||
+        std::allocator_traits<allocator_type>::is_always_equal::value) :
         array_allocator(std::move(value.array_allocator)),
         array_ptr(std::move(value.array_ptr)),
         array_size(std::move(value.array_size)),
@@ -403,7 +408,7 @@ constexpr Vector<Type, allocator>::Vector(const Vector& value, const allocator_t
 {
     for (size_type i = 0; i < array_size; ++i)
     {
-        std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, value.array_ptr[i]);
+        std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), value.array_ptr[i]);
     }
 }
 //----------------------------------------------------------------------------------------------------
@@ -427,9 +432,9 @@ constexpr Vector<Type, allocator>::Vector(std::initializer_list<value_type> init
         array_size(init_list.size()),
         array_capacity(init_list.size())
 {
-    for (size_type i = 0; i < init_list.size(); ++i)
+    for (size_type i = 0; i < init_list.size(); i++)
     {
-        std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, *(init_list.begin() + i));
+        std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), *std::next(init_list.begin(), i));
     }
 }
 //----------------------------------------------------------------------------------------------------
@@ -445,17 +450,34 @@ constexpr Vector<Type, allocator>& Vector<Type, allocator>::operator=(const Vect
 {
     if (this != &value)
     {
-        clear();
-        std::allocator_traits<allocator_type>::deallocate(array_allocator, array_ptr, array_capacity);
-        array_ptr = std::allocator_traits<allocator_type>::allocate(array_allocator, value.array_capacity);
-
-        for (size_type i = 0; i < value.array_size; ++i)
+        if (std::allocator_traits<allocator>::propagate_on_container_copy_assignment::value &&
+            array_allocator != value.array_allocator)
         {
-            std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, value[i]);
+            clear();
+            std::allocator_traits<allocator_type>::deallocate(array_allocator, array_ptr, array_capacity);
+            array_allocator = value.array_allocator;
+            array_ptr = std::allocator_traits<allocator_type>::allocate(array_allocator, value.array_capacity);
+
+            for (size_type i = 0; i < value.size(); ++i)
+            {
+                std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), value.array_ptr[i]);
+            }
+            array_size = value.array_size;
+            array_capacity = value.array_capacity;
         }
-        array_size = value.array_size;
-        array_capacity = value.array_capacity;
-        array_allocator = value.array_allocator;
+        else
+        {
+            clear();
+            std::allocator_traits<allocator_type>::deallocate(array_allocator, array_ptr, array_capacity);
+            array_ptr = std::allocator_traits<allocator_type>::allocate(array_allocator, value.array_capacity);
+
+            for (size_type i = 0; i < value.array_size; ++i)
+            {
+                std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), value.array_ptr[i]);
+            }
+            array_size = value.array_size;
+            array_capacity = value.array_capacity;
+        }
     }
     return *this;
 }
@@ -465,10 +487,20 @@ constexpr Vector<Type, allocator>& Vector<Type, allocator>::operator=(Vector&& v
 {
     if (this != &value)
     {
-        std::swap(array_ptr, value.array_ptr);
-        std::swap(array_size, value.array_size);
-        std::swap(array_capacity, value.array_capacity);
-        std::swap(array_allocator, value.array_allocator);
+        if (array_allocator == value.array_allocator)
+        {
+            std::swap(array_ptr, value.array_ptr);
+            std::swap(array_size, value.array_size);
+            std::swap(array_capacity, value.array_capacity);
+        }
+        else
+        if (std::allocator_traits<allocator_type>::propagate_on_container_move_assignment::value)
+        {
+            std::swap(array_ptr, value.array_ptr);
+            std::swap(array_size, value.array_size);
+            std::swap(array_capacity, value.array_capacity);
+            std::swap(array_allocator, value.array_allocator);
+        }
     }
     return *this;
 }
@@ -484,9 +516,8 @@ constexpr Vector<Type, allocator>& Vector<Type, allocator>::operator=(std::initi
 
         for (size_type i = 0; i < init_list.size(); ++i)
         {
-            std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, *(init_list.begin() + i));
+            std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), *std::next(init_list.begin(), i));
         }
-
         array_size = init_list.size();
         array_capacity = init_list.size();
     }
@@ -495,7 +526,7 @@ constexpr Vector<Type, allocator>& Vector<Type, allocator>::operator=(std::initi
         clear();
         for (size_type i = 0; i < init_list.size(); ++i)
         {
-            std::allocator_traits<allocator_type>::construct(array_allocator, array_ptr + i, *(init_list.begin() + i));
+            std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), *std::next(init_list.begin(), i));
         }
         array_size = init_list.size();
     }
@@ -503,32 +534,64 @@ constexpr Vector<Type, allocator>& Vector<Type, allocator>::operator=(std::initi
 }
 //----------------------------------------------------------------------------------------------------
 template <typename Type, typename allocator>
-template<typename InputIt>
+template<typename InputIt, typename>
 constexpr void Vector<Type, allocator>::assign(InputIt first, InputIt last)
 {
-//    clear();
-//    for (size_type i = 0; i < count; ++i)
-//    {
-//        std::allocator_traits<allocator_type>::construct(value);
-//    }
-//    array_size = count;
+    if(std::distance(first, last) > array_capacity)
+    {
+        clear();
+        std::allocator_traits<allocator_type>::deallocate(array_allocator, array_ptr, array_capacity);
+        array_ptr = std::allocator_traits<allocator_type>::allocate(array_allocator, std::distance(first, last));
+
+        for (size_type i = 0; i < std::distance(first, last); ++i)
+        {
+            std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), *std::next(first, i));
+        }
+        array_size = std::distance(first, last);
+        array_capacity = std::distance(first, last);
+    }
+    else
+    {
+        clear();
+        for (size_type i = 0; i < std::distance(first, last); ++i)
+        {
+            std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), *std::next(first, i));
+        }
+        array_size = std::distance(first, last);
+    }
 }
 //----------------------------------------------------------------------------------------------------
 template <typename Type, typename allocator>
 constexpr void Vector<Type, allocator>::assign(size_type count, const_reference value)
 {
-    clear();
-    for (size_type i = 0; i < count; ++i)
+    if(count > array_capacity)
     {
-        std::allocator_traits<allocator_type>::construct(value);
+        clear();
+        std::allocator_traits<allocator_type>::deallocate(array_allocator, array_ptr, array_capacity);
+        array_ptr = std::allocator_traits<allocator_type>::allocate(array_allocator, count);
+
+        for (size_type i = 0; i < count; ++i)
+        {
+            std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), value);
+        }
+        array_size = count;
+        array_capacity = count;
     }
-    array_size = count;
+    else
+    {
+        clear();
+        for (size_type i = 0; i < count; ++i)
+        {
+            std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), value);
+        }
+        array_size = count;
+    }
 }
 //----------------------------------------------------------------------------------------------------
 template <typename Type, typename allocator>
 constexpr void Vector<Type, allocator>::assign(std::initializer_list<value_type> init_list)
 {
-    if(array_capacity < init_list.size())
+    if(init_list.size() > array_capacity)
     {
         clear();
         std::allocator_traits<allocator_type>::deallocate(array_allocator, array_ptr, array_capacity);
@@ -536,9 +599,8 @@ constexpr void Vector<Type, allocator>::assign(std::initializer_list<value_type>
 
         for (size_type i = 0; i < init_list.size(); ++i)
         {
-            std::allocator_traits<allocator_type>::construct(*(init_list.begin() + i));
+            std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), *std::next(init_list.begin(), i));
         }
-
         array_size = init_list.size();
         array_capacity = init_list.size();
     }
@@ -547,7 +609,7 @@ constexpr void Vector<Type, allocator>::assign(std::initializer_list<value_type>
         clear();
         for (size_type i = 0; i < init_list.size(); ++i)
         {
-            std::allocator_traits<allocator_type>::construct(*(init_list.begin() + i));
+            std::allocator_traits<allocator_type>::construct(array_allocator, std::next(array_ptr, i), *std::next(init_list.begin(), i));
         }
         array_size = init_list.size();
     }
@@ -753,9 +815,9 @@ constexpr typename Vector<Type, allocator>::const_reference Vector<Type, allocat
 template <typename Type, typename allocator>
 constexpr void Vector<Type, allocator>::clear() noexcept
 {
-    while(array_size != 0)
+    for (size_type i = 0; i < array_size; ++i)
     {
-        std::allocator_traits<allocator_type>::destroy(array_allocator, array_ptr + (array_size--));
+        std::allocator_traits<allocator_type>::destroy(array_allocator, std::next(array_ptr, i));
     }
 }
 //----------------------------------------------------------------------------------------------------
