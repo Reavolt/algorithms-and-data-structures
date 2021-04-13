@@ -1,7 +1,5 @@
 #include "test_runner.h"
 
-#include "test_runner.h"
-
 //----------------------------------------------------------------------------------------------------
 void ASSERT(bool b, const std::string& hint)
 {

@@ -176,6 +176,170 @@ void test_copy_assig_oper()
     }
 }
 //----------------------------------------------------------------------------------------------------
+void test_move_assig_oper()
+{
+    Vector<int> test_vec_1(10, 5);
+    Vector<int> test_vec_2 = std::move(test_vec_1);
+
+    ASSERT_EQUAL(test_vec_1.size(), 0);
+    ASSERT_EQUAL(test_vec_1.capacity(), 0);
+    ASSERT_EQUAL(test_vec_2.size(), 10);
+    ASSERT_EQUAL(test_vec_2.capacity(), 10);
+
+    for (int& i : test_vec_2)
+    {
+        ASSERT_EQUAL(i, 5);
+    }
+}
+//----------------------------------------------------------------------------------------------------
+void test_init_assig_oper()
+{
+    Vector<int> test_vec_1 = {5,5,5,5,5};
+
+    ASSERT_EQUAL(test_vec_1.size(), 5);
+    ASSERT_EQUAL(test_vec_1.capacity(), 5);
+
+    for (int& i : test_vec_1)
+    {
+        ASSERT_EQUAL(i, 5);
+    }
+}
+//----------------------------------------------------------------------------------------------------
+void test_assign_itr()
+{
+    Vector<int> test_vec_1(5,5);
+    Vector<int> test_vec_2;
+    Vector<int> test_vec_3(10, 5);
+    Vector<int> test_vec_4(20, 5);
+
+    ASSERT_EQUAL(test_vec_1.size(), 5);
+    ASSERT_EQUAL(test_vec_1.capacity(), 5);
+
+    test_vec_2.assign(test_vec_1.begin(), test_vec_1.end());
+
+    ASSERT_EQUAL(test_vec_2.size(), 5);
+    ASSERT_EQUAL(test_vec_2.capacity(), 5);
+
+    for (int& i : test_vec_1)
+    {
+        ASSERT_EQUAL(i, 5);
+    }
+
+    for (int& i : test_vec_2)
+    {
+        ASSERT_EQUAL(i, 5);
+    }
+
+    test_vec_4.assign(test_vec_3.begin(), test_vec_3.end());
+
+    ASSERT_EQUAL(test_vec_4.size(), 10);
+    ASSERT_EQUAL(test_vec_4.capacity(), 20);
+
+    for (int& i : test_vec_4)
+    {
+        ASSERT_EQUAL(i, 5);
+    }
+}
+//----------------------------------------------------------------------------------------------------
+void test_assign_value_size()
+{
+    Vector<int> test_vec_1(5,5);
+    Vector<int> test_vec_2(10, 5);
+
+    ASSERT_EQUAL(test_vec_1.size(), 5);
+    ASSERT_EQUAL(test_vec_1.capacity(), 5);
+
+    ASSERT_EQUAL(test_vec_2.size(), 10);
+    ASSERT_EQUAL(test_vec_2.capacity(), 10);
+
+    test_vec_1.assign(10, 5);
+
+    ASSERT_EQUAL(test_vec_1.size(), 10);
+    ASSERT_EQUAL(test_vec_1.capacity(), 10);
+
+    for (int& i : test_vec_1)
+    {
+        ASSERT_EQUAL(i, 5);
+    }
+
+    test_vec_2.assign(5, 5);
+
+    ASSERT_EQUAL(test_vec_2.size(), 5);
+    ASSERT_EQUAL(test_vec_2.capacity(), 10);
+
+    for (int& i : test_vec_2)
+    {
+        ASSERT_EQUAL(i, 5);
+    }
+}
+//----------------------------------------------------------------------------------------------------
+void test_assign_init_list()
+{
+    Vector<int> test_vec_1(5,5);
+
+    ASSERT_EQUAL(test_vec_1.size(), 5);
+    ASSERT_EQUAL(test_vec_1.capacity(), 5);
+
+    test_vec_1.assign({5,5,5,5});
+
+    ASSERT_EQUAL(test_vec_1.size(), 4);
+    ASSERT_EQUAL(test_vec_1.capacity(), 5);
+
+    for (int& i : test_vec_1)
+    {
+        ASSERT_EQUAL(i, 5);
+    }
+
+    test_vec_1.assign({5,5,5,5,5});
+
+    ASSERT_EQUAL(test_vec_1.size(), 5);
+    ASSERT_EQUAL(test_vec_1.capacity(), 5);
+
+    for (int& i : test_vec_1)
+    {
+        ASSERT_EQUAL(i, 5);
+    }
+
+    test_vec_1.assign({5,5,5,5,5,5});
+
+    ASSERT_EQUAL(test_vec_1.size(), 6);
+    ASSERT_EQUAL(test_vec_1.capacity(), 6);
+
+    for (int& i : test_vec_1)
+    {
+        ASSERT_EQUAL(i, 5);
+    }
+}
+//----------------------------------------------------------------------------------------------------
+void test_iterator()
+{
+    Vector<int> test_vec{1,2,3,4,5};
+    Vector<int>::iterator test_iter_beg = test_vec.begin();
+    Vector<int>::iterator test_iter_end = test_vec.end();
+
+    ASSERT_EQUAL(*test_iter_beg, 1);
+    ASSERT_EQUAL(*std::prev(test_iter_end), 5);
+
+    size_t i = 0;
+    for (; test_iter_beg != test_iter_end; test_iter_beg++)
+    {
+        ASSERT_EQUAL(*test_iter_beg, ++i);
+    }
+}
+//----------------------------------------------------------------------------------------------------
+void test_const_iterator()
+{
+//    std::vector<int> test_vec{1,2,3,4,5};
+//    std::vector<int>::const_iterator test_iter_beg = test_vec.begin();
+//    std::vector<int>::const_iterator test_iter_end = test_vec.end();
+
+    Vector<int> test_vec{1,2,3,4,5};
+    Vector<int>::const_iterator test_iter_beg = test_vec.begin();
+    Vector<int>::const_iterator test_iter_end = test_vec.end();
+
+    ASSERT_EQUAL(*test_iter_beg, 1);
+}
+//----------------------------------------------------------------------------------------------------
 int main()
 {
     TestRunner tr;
@@ -189,7 +353,15 @@ int main()
     tr.RunTest(test_copy_alloc_ctor, "test_copy_alloc_ctor");
     tr.RunTest(test_move_alloc_ctor, "test_move_alloc_ctor");
     tr.RunTest(test_init_list_ctor, "test_init_list_ctor");
+    tr.RunTest(test_dctor, "test_dctor");
     tr.RunTest(test_copy_assig_oper, "test_copy_assig_oper");
+    tr.RunTest(test_move_assig_oper, "test_move_assig_oper");
+    tr.RunTest(test_init_assig_oper, "test_init_assig_oper");
+    tr.RunTest(test_assign_itr, "test_assign_itr");
+    tr.RunTest(test_assign_value_size, "test_assign_value_size");
+    tr.RunTest(test_assign_init_list, "test_assign_init_list");
+    tr.RunTest(test_iterator, "test_iterator");
+    tr.RunTest(test_const_iterator, "test_const_iterator");
     return 0;
 }
 //----------------------------------------------------------------------------------------------------
