@@ -7,6 +7,7 @@
 #include <iostream>
 #include <type_traits>
 #include <iterator>
+#include <limits>
 
 //----------------------------------------------------------------------------------------------------
 template <typename Type>
@@ -73,12 +74,13 @@ template <typename Type>
 class Iterator
 {
 public:
-    using value_type = typename std::conditional_t<std::is_const_v<Type>, const Type, Type>;
-    using difference_type = std::ptrdiff_t;
-    using reference = value_type&;
-    using pointer = value_type*;
-    using iterator_category = std::bidirectional_iterator_tag;
-    using iterator_concept = std::bidirectional_iterator_tag;
+    using iterator_type = Type;
+    using value_type        = typename std::iterator_traits<iterator_type>::value_type;
+    using difference_type   = typename std::iterator_traits<iterator_type>::difference_type;
+    using pointer           = typename std::iterator_traits<iterator_type>::pointer;
+    using reference         = typename std::iterator_traits<iterator_type>::reference;
+    using iterator_category = typename std::iterator_traits<iterator_type>::iterator_category;
+    using iterator_concept  = std::contiguous_iterator_tag;                                  ;
 public:
     constexpr Iterator();
     constexpr Iterator(const Iterator& itr);
@@ -101,7 +103,7 @@ public:
     template <typename type_operator>
     friend bool operator!=(const Iterator<type_operator>& lhs, const Iterator<type_operator>& rhs);
 private:
-    pointer value_ptr;
+    iterator_type value_ptr;
 };
 //----------------------------------------------------------------------------------------------------
 template <typename Type>
@@ -212,8 +214,8 @@ public:
     using const_reference        = const value_type&;
     using size_type              = std::size_t;
     using difference_type        = std::ptrdiff_t;
-    using iterator               = Iterator<Type>;
-    using const_iterator         = Iterator<const Type>;
+    using iterator               = Iterator<pointer>;
+    using const_iterator         = Iterator<const_pointer>;
     using reverse_iterator       = std::reverse_iterator<iterator>;
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 public:
