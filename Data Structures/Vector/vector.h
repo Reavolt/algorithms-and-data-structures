@@ -8,7 +8,6 @@
 #include <type_traits>
 #include <iterator>
 #include <limits>
-#include <vector>
 
 //----------------------------------------------------------------------------------------------------
 template <typename Type>
@@ -81,11 +80,11 @@ public:
     using pointer           = typename std::iterator_traits<iterator_type>::pointer;
     using reference         = typename std::iterator_traits<iterator_type>::reference;
     using iterator_category = typename std::iterator_traits<iterator_type>::iterator_category;
-    using iterator_concept  = std::contiguous_iterator_tag;                                  ;
+    using iterator_concept  = std::contiguous_iterator_tag;
 public:
     constexpr Iterator();
-    template <typename _Up>
-    constexpr Iterator(const Iterator<_Up>& itr, typename std::enable_if_t<std::is_convertible<_Up, iterator_type>::value>* = nullptr) : value_ptr(itr.value_ptr) {}
+    template <typename Itr, typename = std::enable_if_t<std::is_convertible<Itr, iterator_type>::value>*>
+    constexpr Iterator(const Iterator<Itr>& itr);
     constexpr Iterator(const Iterator& itr);
     constexpr explicit Iterator(pointer ptr);
     constexpr ~Iterator();
@@ -99,12 +98,17 @@ public:
     constexpr Iterator operator--(int);
     constexpr Iterator& operator=(const Iterator& itr);
 
+    constexpr Iterator operator+(difference_type value);
+    constexpr Iterator operator-(difference_type value);
+
     template <typename type_swap>
     friend void swap(const Iterator<type_swap>& lhs, const Iterator<type_swap>& rhs);
     template <typename type_operator>
     friend bool operator==(const Iterator<type_operator>& lhs, const Iterator<type_operator>& rhs);
     template <typename type_operator>
     friend bool operator!=(const Iterator<type_operator>& lhs, const Iterator<type_operator>& rhs);
+
+    iterator_type data() const {return value_ptr;}
 private:
     iterator_type value_ptr;
 };
@@ -115,12 +119,12 @@ constexpr Iterator<Type>::Iterator() : value_ptr(nullptr)
 
 }
 //----------------------------------------------------------------------------------------------------
-// template <typename Type>
-// template <typename _Up>
-// constexpr Iterator<Type>::Iterator(const Iterator<_Up>& itr) : value_ptr(itr.value_ptr)
-// {
+template <typename Type>
+template <typename Itr, typename>
+constexpr Iterator<Type>::Iterator(const Iterator<Itr>& itr) : value_ptr(itr.data())
+{
 
-// }
+}
 //----------------------------------------------------------------------------------------------------
 template <typename Type>
 constexpr Iterator<Type>::Iterator(const Iterator& itr) : value_ptr(itr.value_ptr)
@@ -190,6 +194,18 @@ constexpr Iterator<Type>& Iterator<Type>::operator=(const Iterator& itr)
         value_ptr = itr.value_ptr;
     }
     return *this;
+}
+//----------------------------------------------------------------------------------------------------
+template <typename Type>
+constexpr Iterator<Type> Iterator<Type>::operator+(difference_type value)
+{
+   return Iterator(value_ptr + value);
+}
+//----------------------------------------------------------------------------------------------------
+template <typename Type>
+constexpr Iterator<Type> Iterator<Type>::operator-(difference_type value)
+{
+   return Iterator(value_ptr - value);
 }
 //----------------------------------------------------------------------------------------------------
 template <typename type_swap>
@@ -834,22 +850,3 @@ constexpr void Vector<Type, allocator>::clear() noexcept
 }
 //----------------------------------------------------------------------------------------------------
 #endif //VECTOR_VECTOR_H
-
-void test_const_iterator()
-{
-//    std::vector<int> test_vec{1,2,3,4,5};
-//    std::vector<int>::const_iterator test_iter_beg = test_vec.begin();
-//    std::vector<int>::const_iterator test_iter_end = test_vec.end();
-
-    Vector<int> test_vec{1,2,3,4,5};
-    Vector<int>::const_iterator test_iter_beg = test_vec.begin();
-    Vector<int>::const_iterator test_iter_end = test_vec.end();
-
-
-}
-//----------------------------------------------------------------------------------------------------
-int main()
-{
-test_const_iterator();
-    return 0;
-}
